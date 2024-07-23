@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
             Number, Operator, Expr, Lispy);
 
   /* Print Version and Exit Information */
-  puts("Lispy Version 0.0.0.0.1");
+  puts("Lispy Version 0.0.0.0.3");
   puts("Press Ctrl+c to Exit\n");
 
   /* In a never ending loop */
