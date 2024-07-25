@@ -31,28 +31,52 @@ void add_history(char *unused) {}
 enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM };
 
 /* Create Enumeration of Possible lval Types */
-enum { LVAL_NUM, LVAL_ERR };
+enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR };
 
 /* Declare New lval Struct */
-typedef struct {
+typedef struct lval {
   int type;
   long num;
-  int err;
+  /* Error and Symbol types have some string data */
+  char *err;
+  char *sym;
+  /* Count and Pointer to a list of "lval*" */
+  int count;
+  struct lval **cell;
 } lval;
 
-/* Create a new number type lval */
-lval lval_num(long x) {
-  lval v;
-  v.type = LVAL_NUM;
-  v.num = x;
+/* Construct a pointer to a New Number lval */
+lval *lval_num(long x) {
+  lval *v = malloc(sizeof(lval));
+  v->type = LVAL_NUM;
+  v->num = x;
   return v;
 }
 
-/* Create a new error type lval */
-lval lval_err(int x) {
-  lval v;
-  v.type = LVAL_ERR;
-  v.err = x;
+/* Constrct a pointer to a new Error lval */
+lval *lval_err(char *m) {
+  lval *v = malloc(sizeof(lval));
+  v->type = LVAL_ERR;
+  v->err = malloc(strlen(m) + 1);
+  strcpy(v->err, m);
+  return v;
+}
+
+/* Construct a pointer to a new Symbol lval */
+lval *lval_sym(char *s) {
+  lval *v = malloc(sizeof(lval));
+  v->type = LVAL_SYM;
+  v->sym = malloc(strlen(s) + 1);
+  strcpy(v->sym, s);
+  return v;
+}
+
+/* A pointer to a new empty Sexpr lval */
+lval *lval_sexpr(void) {
+  lval *v = malloc(sizeof(lval));
+  v->type = LVAL_SEXPR;
+  v->count = 0;
+  v->cell = NULL;
   return v;
 }
 
