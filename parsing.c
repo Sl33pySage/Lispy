@@ -27,6 +27,12 @@ void add_history(char *unused) {}
 #include <editline/readline.h>
 #endif
 
+#define LASSERT(args, cond, err)                                               \
+  if (!(cond)) {                                                               \
+    lval_del(args);                                                            \
+    return lval_err(err);                                                      \
+  }
+
 /* Create Enumeration of Possible lval Types */
 enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR };
 
@@ -267,62 +273,62 @@ lval *lval_eval_sexpr(lval *v) {
     return lval_err("S-expression Does not start with symbol.");
   }
 
-  lval *builtin_head(lval * a) {
-    /* Check Error Conditions */
-    if (a->count != 1) {
-      lval_del(a);
-      return lval_err("Function 'head' passed too many arguments!");
-    }
-
-    if (a->cell[0]->type != LVAL_QEXPR) {
-      lval_del(a);
-      return lval_err("Function 'head' passed incorrect types!");
-    }
-
-    if (a->cell[0]->count == 0) {
-      lval_del(a);
-      return lval_err("Function 'head' passed {}!");
-    }
-
-    /* Otherwise take first argument */
-    lval *v = lval_take(a, 0);
-
-    /* Delete all elements that are not head and return */
-    while (v->count > 1) {
-      lval_del(lval_pop(v, 1));
-    }
-    return v;
-  }
-
-  lval *builtin_tail(lval * a) {
-    /* Check Error Conditions */
-    if (a->count != 1) {
-      lval_del(a);
-      return lval_err("Function 'tail' passed too many arguments!");
-    }
-
-    if (a->cell[0]->type != LVAL_QEXPR) {
-      lval_del(a);
-      return lval_err("Function 'tail' passed incorrect types!");
-    }
-
-    if (a->cell[0]->count == 0) {
-      lval_del(a);
-      return lval_err("Function 'tail' passed {}!");
-    }
-
-    /* Take first argument */
-    lval *v = lval_take(a, 0);
-
-    /* Delete first element and return */
-    lval_del(lval_pop(v, 0));
-    return v;
-  }
-
   /* Call builtin with operator */
   lval *result = builtin_op(v, f->sym);
   lval_del(f);
   return result;
+}
+
+lval *builtin_head(lval *a) {
+  /* Check Error Conditions */
+  if (a->count != 1) {
+    lval_del(a);
+    return lval_err("Function 'head' passed too many arguments!");
+  }
+
+  if (a->cell[0]->type != LVAL_QEXPR) {
+    lval_del(a);
+    return lval_err("Function 'head' passed incorrect types!");
+  }
+
+  if (a->cell[0]->count == 0) {
+    lval_del(a);
+    return lval_err("Function 'head' passed {}!");
+  }
+
+  /* Otherwise take first argument */
+  lval *v = lval_take(a, 0);
+
+  /* Delete all elements that are not head and return */
+  while (v->count > 1) {
+    lval_del(lval_pop(v, 1));
+  }
+  return v;
+}
+
+lval *builtin_tail(lval *a) {
+  /* Check Error Conditions */
+  if (a->count != 1) {
+    lval_del(a);
+    return lval_err("Function 'tail' passed too many arguments!");
+  }
+
+  if (a->cell[0]->type != LVAL_QEXPR) {
+    lval_del(a);
+    return lval_err("Function 'tail' passed incorrect types!");
+  }
+
+  if (a->cell[0]->count == 0) {
+    lval_del(a);
+    return lval_err("Function 'tail' passed {}!");
+  }
+
+  /* Take first argument */
+  lval *v = lval_take(a, 0);
+
+  /* Delete first element and return */
+  lval_del(lval_pop(v, 0));
+  return v;
 }
 
 lval *lval_eval(lval *v) {
