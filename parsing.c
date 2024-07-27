@@ -28,7 +28,7 @@ void add_history(char *unused) {}
 #endif
 
 /* Create Enumeration of Possible lval Types */
-enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR };
+enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR };
 
 /* Declare New lval Struct */
 typedef struct lval {
@@ -77,6 +77,15 @@ lval *lval_sexpr(void) {
   return v;
 }
 
+/* A pointer to a new empty Qexpr lval */
+lval *lval_qexpr(void) {
+  lval *v = malloc(sizeof(lval));
+  v->type = LVAL_QEXPR;
+  v->count = 0;
+  v->cell = NULL;
+  return v;
+}
+
 void lval_del(lval *v) {
   switch (v->type) {
   /* Do nothing special for number type */
@@ -91,7 +100,8 @@ void lval_del(lval *v) {
     free(v->sym);
     break;
 
-  /* If Sexpr then delete all the elements inside*/
+    /* If Qexpr or Sexpr then delete all the elements inside*/
+  case LVAL_QEXPR:
   case LVAL_SEXPR:
     for (int i = 0; i < v->count; i++) {
       lval_del(v->cell[i]);
@@ -162,6 +172,9 @@ void lval_print(lval *v) {
     break;
   case LVAL_SEXPR:
     lval_expr_print(v, '(', ')');
+    break;
+  case LVAL_QEXPR:
+    lval_expr_print(v, '{', '}');
     break;
   }
 }
