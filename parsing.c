@@ -484,12 +484,15 @@ lval *lval_eval_sexpr(lval *v) {
   return result;
 }
 
-lval *lval_eval(lval *v) {
-  /* Evaluate Sexpressions */
-  if (v->type == LVAL_SEXPR) {
-    return lval_eval_sexpr(v);
+lval *lval_eval(lenv *e, lval *v) {
+  if (v->type == LVAL_SYM) {
+    lval *x = lenv_get(e, v);
+    lval_del(v);
+    return x;
   }
-  /* All other lval types remain the same */
+  if (v->type == LVAL_SEXPR) {
+    return lval_eval_sexpr(e, v);
+  }
   return v;
 }
 
