@@ -147,7 +147,7 @@ lval *lval_copy(lval *v) {
   case LVAL_QEXPR:
     x->count = v->count;
     x->cell = malloc(sizeof(lval *) * x->count);
-    for (int i = 0; i < i->count; i++) {
+    for (int i = 0; i < x->count; i++) {
       x->cell[i] = lval_copy(v->cell[i]);
     }
     break;
@@ -315,27 +315,22 @@ void lenv_put(lenv *e, lval *k, lval *v) {
 }
 
 /* Builtins */
-#define LASSERT(args, cond, fmt, ...) if (!(cond)) {
-lval *err = lval_err(fmt, ##__VA_ARGS__);
-lval_del(args);
-return err;
-}
+#define LASSERT_TYPE(func, args, index, expect)                                \
+  LASSERT(args, args->cell[index]->type == expect,                             \
+          "Function '%s' passed incorrect type for argument %i. Got %s, "      \
+          "Expected %s.",                                                      \
+          func, index, ltype_name(args->cell[index]->type),                    \
+          ltype_name(expect))
 
-#define LASSERT_TYPE(func, args, index, expect)
-LASSERT(
-    args, args->cell[index]->type == expect,
-    "Function '%s' passed incorrect type for argument %i. Got %s, expected %s",
-    func, index, ltype_name(args->cell[index]->type), ltype_name(expect));
+#define LASSERT_NUM(func, args, num)                                           \
+  LASSERT(args, args->count == num,                                            \
+          "Function '%s' passed incorrect number of arguments. Got %i, "       \
+          "Expected %i.",                                                      \
+          func, args->count, num)
 
-#define LASSERT_NUM(func, args, num)
-LASSERT(
-    args, args->count == num,
-    "Function '%s' passed incorrect number of arguments. Got %i, expected %i.",
-    func, args->count, num)
-
-#define LASSERT_NOT_EMPTY(func, args, index)
-LASSERT(args, args->cell[index]->count != 0,
-        "Function '%s' passed {} for argument %i.", func, index);
+#define LASSERT_NOT_EMPTY(func, args, index)                                   \
+  LASSERT(args, args->cell[index]->count != 0,                                 \
+          "Function '%s' passed {} for argument %i.", func, index);
 
 lval *lval_eval(lenv *e, lval *v);
 
@@ -344,7 +339,7 @@ lval *builtin_list(lenv *e, lval *a) {
   return a;
 }
 
-lval *builtin_head(lenv *e, lenv *a) {
+lval *builtin_head(lenv *e, lval *a) {
   LASSERT_NUM("head", a, 1);
   LASSERT_TYPE("head", a, 0, LVAL_QEXPR);
   LASSERT_NOT_EMPTY("head", a, 0);
@@ -534,138 +529,14 @@ lval *lval_eval(lenv *e, lval *v) {
 
 /* Reading */
 
-lval *lval_copy(lval *v) {
-  lval *x = malloc(sizeof(lval));
-  x->type = v->type;
-  switch (v->type) {
-  /* Copy Functions and Numbers Directly */
-  case LVAL_FUN:
-    x->fun = v->fun;
-    break;
-  case LVAL_NUM:
-    x->num = v->num;
-    break;
-
-  /* Copy Strings using malloc and strcpy */
-  case LVAL_ERR:
-    x->err = malloc(strlen(v->err) + 1);
-    strcpy(x->err, v->err);
-    break;
-  case LVAL_SYM:
-    x->sym = malloc(strlen(v->sym) + 1);
-    strcpy(x->sym, v->sym);
-    break;
-
-  /* Copy Lists by copying each sub-expression */
-  case LVAL_SEXPR:
-  case LVAL_QEXPR:
-    x->count = v->count;
-    x->cell = malloc(sizeof(lval *) * x->count);
-    for (int i = 0; i < x->count; i++) {
-      x->cell[i] = lval_copy(v->cell[i]);
-    }
-    break;
-  }
-  return x;
-}
-
-struct lenv {
-  int count;
-  char **syms;
-  lval **vals;
-};
-
-lenv *lenv_new(void) {
-  lenv *e = malloc(sizeof(lenv));
-  e->count = 0;
-  e->syms = NULL;
-  e->vals = NULL;
-  return e;
-}
-
-void lenv_del(lenv *e) {
-  for (int i = 0; i < e->count; i++) {
-    free(e->syms[i]);
-    lval_del(e->vals[i]);
-  }
-  free(e->syms);
-  free(e->vals);
-  free(e);
-}
-
-lval *lenv_get(lenv *e, lval *k) {
-  /* Iterate over all items in environment */
-  for (int i = 0; i < e->count; i++) {
-    /* Check if the stored string matches the symbol string */
-    /* If it does, return a copy of the value */
-    if (strcmp(e->syms[i], k->sym) == 0) {
-      return lval_copy(e->vals[i]);
-    }
-  }
-  /* If no symbol found return error */
-  return lval_err("Unbound symbol!");
-}
-
-void lenv_put(lenv *e, lval *k, lval *v) {
-  /* Iterate over all items in environment */
-  /* This is to see if variable already exists */
-  for (int i = 0; i < e->count; i++) {
-    /* If variable is found delete item at the position */
-    /* And replace with variable supplied by user */
-    if (strcmp(e->syms[i], k->sym) == 0) {
-      lval_del(e->vals[i]);
-      e->vals[i] = lval_copy(v);
-      return;
-    }
-  }
-  /* If no existing entry found allocate space for new entry */
-  e->count++;
-  e->vals = realloc(e->vals, sizeof(lval *) * e->count);
-  e->syms = realloc(e->syms, sizeof(char *) * e->count);
-
-  /* Copy contents of lval and symbol string into new location */
-  e->vals[e->count - 1] = lval_copy(v);
-  e->syms[e->count - 1] = malloc(strlen(k->sym) + 1);
-  strcpy(e->syms[e->count - 1], k->sym);
-}
-lval *lval_eval(lval *v);
-lval *builtin_list(lenv *a) {
-  a->type = LVAL_QEXPR;
-  return a;
-}
-
-lval *builtin(lenv *a, char *func) {
-  if (strcmp("list", func) == 0) {
-    return builtin_list(a);
-  }
-  if (strcmp("head", func) == 0) {
-    return builtin_head(a);
-  }
-  if (strcmp("tail", func) == 0) {
-    return builtin_tail(a);
-  }
-  if (strcmp("join", func) == 0) {
-    return builtin_join(a);
-  }
-  if (strcmp("eval", func) == 0) {
-    return builtin_eval(a);
-  }
-  if (strcmp("+-/*", func)) {
-    return builtin_op(a, func);
-  }
-  lval_del(a);
-  return lval_err("Unknown Function!");
-}
-
 lval *lval_read_num(mpc_ast_t *t) {
   errno = 0;
   long x = strtol(t->contents, NULL, 10);
-  return errno != ERANGE ? lval_num(x) : lval_err("invalid number");
+  return errno != ERANGE ? lval_num(x) : lval_err("invalid Number.");
 }
 
 lval *lval_read(mpc_ast_t *t) {
 
-  /* If Symbol or Number return conversion to that type */
   if (strstr(t->tag, "number")) {
     return lval_read_num(t);
   }
@@ -673,7 +544,6 @@ lval *lval_read(mpc_ast_t *t) {
     return lval_sym(t->contents);
   }
 
-  /* If root (>) or sexpr then create empty list */
   lval *x = NULL;
   if (strcmp(t->tag, "qexpr")) {
     x = lval_qexpr();
@@ -685,7 +555,6 @@ lval *lval_read(mpc_ast_t *t) {
     x = lval_sexpr();
   }
 
-  /* Fill this list with any valid expression contained within */
   for (int i = 0; i < t->children_num; i++) {
     if (strcmp(t->children[i]->contents, "{") == 0) {
       continue;
@@ -706,6 +575,8 @@ lval *lval_read(mpc_ast_t *t) {
   }
   return x;
 }
+
+/* Main */
 
 int main(int argc, char **argv) {
 
@@ -729,7 +600,7 @@ int main(int argc, char **argv) {
             Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
   /* Print Version and Exit Information */
-  puts("Lispy Version 0.0.0.0.5");
+  puts("Lispy Version 0.0.0.0.7");
   puts("Press Ctrl+c to Exit\n");
 
   lenv *e = lenv_new();
@@ -761,7 +632,7 @@ int main(int argc, char **argv) {
     free(input);
   }
   /* Undefine and Delete our Parsers */
-  // mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
+  mpc_cleanup(6, Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
   lenv_del(e);
   return 0;
 }
