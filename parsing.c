@@ -554,7 +554,27 @@ lval *builtin_def(lenv *e, lval *a) {
   return builtin_var(e, a, "def");
 }
 
+lval *builtin_lambda(lenv *e, lval *a) {
+  /* Check Two arguments, each of which are Q-Expressions */
+  LASSERT_NUM("\\", a, 2);
+  LASSERT_TYPE("\\", a, 0, LVAL_QEXPR);
+  LASSERT_TYPE("\\", a, 1, LVAL_QEXPR);
+  /* Check first Q-Expression contains only Symbols */
+  for (int i = 0; i < a->cell[0]->count; i++) {
+    LASSERT(a, (a->cell[0]->cell[i]->type == LVAL_SYM),
+            "Cannot define non-symbol. Got %s. Expected %s.",
+            ltype_name(a->cell[0]->cell[i]->type), ltype_name(LVAL_SYM));
+  }
+  /* Pop first two arguments and pass them to lval_lambda */
+  lval *formals = lval_pop(a, 0);
+  lval *body = lval_pop(a, 0);
+  lval_del(a);
+
+  return lval_lambda(formals, body);
+}
+
 void lenv_add_builtin(lenv *e, char *name, lbuiltin func) {
+
   lval *k = lval_sym(name);
   lval *v = lval_fun(func);
   lenv_put(e, k, v);
@@ -585,6 +605,7 @@ void lenv_add_builtins(lenv *e) {
   /* Lambda */
   lenv_add_builtin(e, "\\", builtin_lambda);
 }
+
 lval *lval_call(lenv *e, lval *f, lval *a) {
   /* If Builtin then simply call that */
   if (f->builtin) {
@@ -615,7 +636,7 @@ lval *lval_call(lenv *e, lval *f, lval *a) {
       /* Next symbol should be bound to remaining arguments */
       lval *nsym = lval_pop(f->formals, 0);
       lenv_put(f->env, nsym, builtin_list(e, a));
-      lval_del(sym);
+      // lval_del(sym);
       lval_del(nsym);
       break;
     }
@@ -676,26 +697,6 @@ lval *lval_lambda(lval *formals, lval *body) {
   v->body = body;
   return v;
 }
-
-lval *builtin_lambda(lenv *e, lval *a) {
-  /* Check Two arguments, each of which are Q-Expressions */
-  LASSERT_NUM("\\", a, 2);
-  LASSERT_TYPE("\\", a, 0, LVAL_QEXPR);
-  LASSERT_TYPE("\\", a, 1, LVAL_QEXPR);
-  /* Check first Q-Expression contains only Symbols */
-  for (int i = 0; i < a->cell[0]->count; i++) {
-    LASSERT(a, (a->cell[0]->cell[i]->type == LVAL_SYM),
-            "Cannot define non-symbol. Got %s.",
-            ltype_name(a->cell[0]->cell[i]->type), ltype_name(LVAL_SYM));
-  }
-  /* Pop first two arguments and pass them to lval_lambda */
-  lval *formals = lval_pop(a, 0);
-  lval *body = lval_pop(a, 0);
-  lval_del(a);
-
-  return lval_lambda(formals, body);
-}
-
 /* Evaluation */
 
 lval *lval_eval_sexpr(lenv *e, lval *v) {
