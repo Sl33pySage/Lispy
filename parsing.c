@@ -496,6 +496,35 @@ lval *builtin_mul(lenv *e, lval *a) { return builtin_op(e, a, "*"); }
 
 lval *builtin_div(lenv *e, lval *a) { return builtin_op(e, a, "/"); }
 
+lval *builtin_var(lenv *e, lval *a, char *func) {
+  LASSERT_TYPE(func, a, 0, LVAL_QEXPR);
+
+  lval *syms = a->cell[0];
+  for (int i = 0; i < syms->count; i++) {
+    LASSERT(a, (syms->cell[i]->type == LVAL_SYM),
+            "Function '%s' cannot define non-symbol. "
+            "Got %s, Expected %s.",
+            func, ltype_name(syms->cell[i]->type), ltype_name(LVAL_SYM));
+  }
+
+  LASSERT(a, (syms->count == a->count - 1),
+          "Function '%s' passed too many arguments for symbols. "
+          "Got %i, Expected %i.",
+          func, syms->count, a->count - 1);
+
+  for (int i = 0; i < syms->count; i++) {
+    /* If 'def' define in globally. If 'put' define locally */
+    if (strcmp(func, "def") == 0) {
+      lenv_def(e, syms->cell[i], a->cell[i + 1]);
+    }
+    if (strcmp(func, "=") == 0) {
+      lenv_put(e, syms->cell[i], a->cell[i + 1]);
+    }
+  }
+  lval_del(a);
+  return lval_sexpr();
+}
+
 lval *builtin_def(lenv *e, lval *a) {
   LASSERT_TYPE("def", a, 0, LVAL_QEXPR);
 
@@ -533,7 +562,8 @@ void lenv_add_builtin(lenv *e, char *name, lbuiltin func) {
   lval_del(v);
 }
 
-lval *builtin_put(lenv *e, lval *a) { return bultin_var(e, a, "="); }
+lval *builtin_put(lenv *e, lval *a) { return builtin_var(e, a, "="); }
+
 void lenv_add_builtins(lenv *e) {
   /* Variable Functions */
   lenv_add_builtin(e, "def", builtin_def);
@@ -555,36 +585,6 @@ void lenv_add_builtins(lenv *e) {
   /* Lambda */
   lenv_add_builtin(e, "\\", builtin_lambda);
 }
-
-lval *builtin_var(lenv *e, lval *a, char *func) {
-  LASSERT_TYPE(func, a, 0, LVAL_QEXPR);
-
-  lval *syms = a->cell[0];
-  for (int i = 0; i < syms->count; i++) {
-    LASSERT(a, (syms->cell[i]->type == LVAL_SYM),
-            "Function '%s' cannot define non-symbol. "
-            "Got %s, Expected %s.",
-            func, ltype_name(syms->cell[i]->type), ltype_name(LVAL_SYM));
-  }
-
-  LASSERT(a, (syms->count == a->count - 1),
-          "Function '%s' passed too many arguments for symbols. "
-          "Got %i, Expected %i.",
-          func, syms->count, a->count - 1);
-
-  for (int i = 0; i < syms->count; i++) {
-    /* If 'def' define in globally. If 'put' define locally */
-    if (strcmp(func, "def") == 0) {
-      lenv_def(e, syms->cell[i], a->cell[i + 1]);
-    }
-    if (strcmp(func, "=") == 0) {
-      lenv_put(e, syms->cell[i], a->cell[i + 1]);
-    }
-  }
-  lval_del(a);
-  return lval_sexpr();
-}
-
 lval *lval_call(lenv *e, lval *f, lval *a) {
   /* If Builtin then simply call that */
   if (f->builtin) {
