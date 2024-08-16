@@ -533,6 +533,7 @@ void lenv_add_builtin(lenv *e, char *name, lbuiltin func) {
   lval_del(v);
 }
 
+lval *builtin_put(lenv *e, lval *a) { return bultin_var(e, a, "="); }
 void lenv_add_builtins(lenv *e) {
   /* Variable Functions */
   lenv_add_builtin(e, "def", builtin_def);
@@ -554,8 +555,6 @@ void lenv_add_builtins(lenv *e) {
   /* Lambda */
   lenv_add_builtin(e, "\\", builtin_lambda);
 }
-
-lval *builtin_put(lenv *e, lval *a) { return bultin_var(e, a, "="); }
 
 lval *builtin_var(lenv *e, lval *a, char *func) {
   LASSERT_TYPE(func, a, 0, LVAL_QEXPR);
@@ -660,6 +659,22 @@ lval *lval_call(lenv *e, lval *f, lval *a) {
   f->env->par = e;
   /* Evaluate the body */
   return builtin_eval(f->env, lval_add(lval_sexpr(), lval_copy(f->body)));
+}
+
+lval *lval_lambda(lval *formals, lval *body) {
+  lval *v = malloc(sizeof(lval));
+  v->type = LVAL_FUN;
+
+  /* Set Builtin To NULL */
+  v->builtin = NULL;
+
+  /* Build new environment */
+  v->env = lenv_new();
+
+  /* Set Formals and Body */
+  v->formals = formals;
+  v->body = body;
+  return v;
 }
 
 lval *builtin_lambda(lenv *e, lval *a) {
@@ -779,23 +794,6 @@ lval *lval_read(mpc_ast_t *t) {
   }
   return x;
 }
-
-lval *lval_lambda(lval *formals, lval *body) {
-  lval *v = malloc(sizeof(lval));
-  v->type = LVAL_FUN;
-
-  /* Set Builtin To NULL */
-  v->builtin = NULL;
-
-  /* Build new environment */
-  v->env = lenv_new();
-
-  /* Set Formals and Body */
-  v->formals = formals;
-  v->body = body;
-  return v;
-}
-
 /* Main */
 
 int main(int argc, char **argv) {
