@@ -450,6 +450,23 @@ lval *builtin_join(lenv *e, lval *a) {
   return x;
 }
 
+lval *lval_call(lenv *e, lval *f, lval *a) {
+  /* If Builtin then simply call that */
+  if (f->builtin) {
+    return f->builtin(e, a);
+  }
+
+  /* Assign each argument to each formal in order */
+  for (int i = 0; i < a->count; i++) {
+    lenv_put(f->env, f->formals->cell[i], a->cell[i]);
+  }
+  lval_del(a);
+  /* Set the parent invironment */
+  f->env->par = e;
+  /* Evaluate the body */
+  return builtin_eval(f->env, lval_add(lval_sexpr(), lval_copy(f->body)));
+}
+
 lval *builtin_op(lenv *e, lval *a, char *op) {
 
   for (int i = 0; i < a->count; i++) {
@@ -573,7 +590,6 @@ lval *builtin_lambda(lenv *e, lval *a) {
 }
 
 void lenv_add_builtin(lenv *e, char *name, lbuiltin func) {
-
   lval *k = lval_sym(name);
   lval *v = lval_fun(func);
   lenv_put(e, k, v);
