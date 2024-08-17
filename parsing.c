@@ -340,15 +340,6 @@ lenv *lenv_copy(lenv *e) {
   return n;
 }
 
-void lenv_def(lenv *e, lval *k, lval *v) {
-  /* Iterate till e has no parent */
-  while (e->par) {
-    e = e->par;
-  }
-  /* Put valie in e */
-  lenv_put(e, k, v);
-}
-
 void lenv_put(lenv *e, lval *k, lval *v) {
 
   /* Iterate over all items in invironment */
@@ -371,6 +362,14 @@ void lenv_put(lenv *e, lval *k, lval *v) {
   e->vals[e->count - 1] = lval_copy(v);
   e->syms[e->count - 1] = malloc(strlen(k->sym) + 1);
   strcpy(e->syms[e->count - 1], k->sym);
+}
+void lenv_def(lenv *e, lval *k, lval *v) {
+  /* Iterate till e has no parent */
+  while (e->par) {
+    e = e->par;
+  }
+  /* Put value in e */
+  lenv_put(e, k, v);
 }
 
 /* Builtins */
