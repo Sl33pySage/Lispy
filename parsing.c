@@ -496,6 +496,7 @@ lval *lval_call(lenv *e, lval *f, lval *a) {
     /* Delete symbol and value  */
     lval_del(sym);
     lval_del(val);
+    // interesting functions
   }
 
   /* Argument list is now bound so can be cleaned up */
